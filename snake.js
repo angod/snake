@@ -6,71 +6,57 @@ const
   sceneCvs = document.getElementById("scene"),
   sceneCtx = sceneCvs.getContext("2d");
 
-let
+const
   cvsWidth  = gridCvs.width  = sceneCvs.width  = 670,
   cvsHeight = gridCvs.height = sceneCvs.height = 480;
 
-const lineWidthFix = 0.5;
+const
+  CELL = 19, // cell size
+  CANVAS_VERTPAD  = 2, // gridCvs vertical padding
+  CANVAS_HORIZPAD = 2; // gridCvs horizontal padding
+  GRID_WIDTH  = 35,
+  GRID_HEIGHT = 25,
+  GRID_RIGHT_BORDER   = CANVAS_HORIZPAD + GRID_WIDTH * CELL,
+  GRID_LEFT_BORDER    = CANVAS_HORIZPAD,
+  GRID_TOP_BORDER     = CANVAS_VERTPAD,
+  GRID_BOTTOM_BORDER  = CANVAS_VERTPAD + GRID_HEIGHT * CELL,
+  LINE_WIDTH_FIX = 0.5;
 
+/** snake directions
+ * 1: LEFT
+ * 2: RIGHT
+ * 3: TOP
+ * 4: BOTTOM
+ */
 let
-  cell = 19, // cell size
-  cvsVP = 2, // gridCvs vertical padding
-  cvsHP = 2; // gridCvs horizontal padding
+  LEFT   = 1,
+  RIGHT  = 2,
+  TOP    = 3,
+  BOTTOM = 4,
+  DIRECTION  = LEFT;
 
 // grid size __35x25__
 let drawGrid = () => {
   // vertical lines, 35boxes
-  for (let w = cvsHP; w <= gridCvs.width; w += 19) {
-    gridCtx.moveTo(w + 0.5, cvsVP);
-    gridCtx.lineTo(w + 0.5, gridCvs.height - cvsVP);
+  for (let w = CANVAS_HORIZPAD; w <= gridCvs.width; w += 19) {
+    gridCtx.moveTo(w + LINE_WIDTH_FIX, CANVAS_VERTPAD);
+    gridCtx.lineTo(w + LINE_WIDTH_FIX, gridCvs.height - CANVAS_VERTPAD);
   }
 
   // horizontal lines, 25boxes
-  for (let h = cvsVP; h <= gridCvs.height; h += 19) {
-    gridCtx.moveTo(cvsHP, h + 0.5);
-    gridCtx.lineTo(gridCvs.width - cvsHP, h + 0.5);
+  for (let h = CANVAS_VERTPAD; h <= gridCvs.height; h += 19) {
+    gridCtx.moveTo(CANVAS_HORIZPAD, h + LINE_WIDTH_FIX);
+    gridCtx.lineTo(gridCvs.width - CANVAS_HORIZPAD, h + LINE_WIDTH_FIX);
   }
 
   gridCtx.stroke();
 };
 
-let snake =
-  [
-    { start:
-      {
-        x: cvsHP,
-        y: cvsVP
-      },
-      end:
-      {
-        x: cvsHP + cell,
-        y: cvsVP + cell
-      }
-    },
-    { start:
-      {
-        x: cvsHP + cell,
-        y: cvsVP
-      },
-      end:
-      {
-        x: cvsHP + 2 * cell,
-        y: cvsVP + cell
-      }
-    },
-    {
-      start:
-      {
-        x: cvsHP + 2 * cell,
-        y: cvsVP
-      },
-      end:
-      {
-        x: cvsHP + 3 * cell,
-        y: cvsVP + cell
-      }
-    }
-  ];
+let snake = [
+  { start: { x: CANVAS_HORIZPAD + 2 * CELL, y: CANVAS_VERTPAD }, end: { x: CANVAS_HORIZPAD + 3 * CELL, y: CANVAS_VERTPAD + CELL } },
+  { start: { x: CANVAS_HORIZPAD + CELL, y: CANVAS_VERTPAD }, end: { x: CANVAS_HORIZPAD + 2 * CELL, y: CANVAS_VERTPAD + CELL } },
+  { start: { x: CANVAS_HORIZPAD, y: CANVAS_VERTPAD }, end: { x: CANVAS_HORIZPAD + CELL, y: CANVAS_VERTPAD + CELL} }
+];
 
 const drawSnake = () => {
   sceneCtx.strokeStyle = "red";
@@ -78,7 +64,7 @@ const drawSnake = () => {
   for (const { start: { x: startX, y: startY}, end: { x: endX, y: endY } } of snake) {
     // console.table([["start", startX, startY], ["end", endX, endY]]);
     sceneCtx.beginPath();
-    sceneCtx.rect(startX + lineWidthFix, startY + lineWidthFix, cell, cell);
+    sceneCtx.rect(startX + LINE_WIDTH_FIX, startY + LINE_WIDTH_FIX, CELL, CELL);
     sceneCtx.closePath();
     sceneCtx.fill();
     sceneCtx.stroke();
@@ -88,28 +74,50 @@ const drawSnake = () => {
 
 const moveSnake = () => {
   let prevHead, nextHead;
-  prevHead = snake[snake.length - 1];
+  prevHead = snake[0];
   // console.log("pHead: ", prevHead);
-  nextHead = {
-    start: {
-      x: prevHead.start.x + cell,
-      y: prevHead.start.y
-    },
-    end: {
-      x: prevHead.end.x + cell,
-      y: prevHead.end.y
+
+  // if snake head === GRID_RB && direction === RIGHT
+  if (prevHead.end.x === GRID_RIGHT_BORDER && DIRECTION === LEFT) {
+    console.log("snake head === GRID_RB");
+    nextHead = {
+      start: {
+        x: CANVAS_HORIZPAD,
+        y: prevHead.start.y
+      },
+      end: {
+        x: CANVAS_HORIZPAD + CELL,
+        y: prevHead.end.y
+      }
     }
-  };
-  // console.log(nextHead);
-  snake.push(nextHead);
-  snake.shift();
-  // console.log(snake);
+  } else {
+    nextHead = {
+      start: {
+        x: prevHead.start.x + CELL,
+        y: prevHead.start.y
+      },
+      end: {
+        x: prevHead.end.x + CELL,
+        y: prevHead.end.y
+      }
+    };
+  }
+
+  // console.log("nHead: ", nextHead);
+  snake.unshift(nextHead);
+  snake.pop();
 
   sceneCtx.clearRect(0, 0, gridCvs.width, gridCvs.height);
-  drawSnake();
 };
 
-let counter = 0;
+// rewrite for compact view
+let printSnake = (snake) => {
+  console.log("##############################################");
+  for (const { start: { x: startX, y: startY}, end: { x: endX, y: endY } } of snake) {
+    console.table([["start", startX, startY], ["end", endX, endY]]);
+  }
+  console.log("##############################################");
+};
 
 const delay = (n) => {
   n = n || 2000;
@@ -120,14 +128,16 @@ const delay = (n) => {
   });
 }
 
+let counter = 0;
+
 const gameloop = async () => {
   drawSnake();
 
-  if (++counter <= 30) {
-    await delay(500);
+  // if (++counter <= 35) {
+    await delay(400);
     moveSnake();
-    console.log("gameloop: ", counter);
-  }
+    // console.log("gameloop tick: ", counter);
+  // }
 
   requestAnimationFrame(gameloop);
 };
