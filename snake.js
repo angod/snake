@@ -16,10 +16,10 @@ const
   CANVAS_HORIZPAD = 2; // gridCvs horizontal padding
   GRID_WIDTH  = 35,
   GRID_HEIGHT = 25,
-  GRID_RIGHT_BORDER   = CANVAS_HORIZPAD + GRID_WIDTH * CELL,
-  GRID_LEFT_BORDER    = CANVAS_HORIZPAD,
-  GRID_TOP_BORDER     = CANVAS_VERTPAD,
-  GRID_BOTTOM_BORDER  = CANVAS_VERTPAD + GRID_HEIGHT * CELL,
+  GRID_TOP_BORDER     = 1,
+  GRID_LEFT_BORDER    = 1,
+  GRID_BOTTOM_BORDER  = GRID_HEIGHT,
+  GRID_RIGHT_BORDER   = GRID_WIDTH,
   LINE_WIDTH_FIX = 0.5;
 
 /** snake directions
@@ -29,7 +29,7 @@ const
  * 4: BOTTOM
  */
 let
-  PAUSE  = 0;
+  PAUSE  = false;
   RIGHT  = 1,
   BOTTOM = 2,
   LEFT   = 3,
@@ -54,18 +54,30 @@ let drawGrid = () => {
 };
 
 let snake = [
-  { start: { x: CANVAS_HORIZPAD + 2 * CELL, y: CANVAS_VERTPAD }, end: { x: CANVAS_HORIZPAD + 3 * CELL, y: CANVAS_VERTPAD + CELL } },
-  { start: { x: CANVAS_HORIZPAD + CELL, y: CANVAS_VERTPAD }, end: { x: CANVAS_HORIZPAD + 2 * CELL, y: CANVAS_VERTPAD + CELL } },
-  { start: { x: CANVAS_HORIZPAD, y: CANVAS_VERTPAD }, end: { x: CANVAS_HORIZPAD + CELL, y: CANVAS_VERTPAD + CELL} }
+  { x: 3, y: 1 },
+  { x: 2, y: 1 },
+  { x: 1, y: 1 }
 ];
+// { start: { x: CANVAS_HORIZPAD + 2 * CELL, y: CANVAS_VERTPAD }, end: { x: CANVAS_HORIZPAD + 3 * CELL, y: CANVAS_VERTPAD + CELL } },
+// { start: { x: CANVAS_HORIZPAD + CELL, y: CANVAS_VERTPAD }, end: { x: CANVAS_HORIZPAD + 2 * CELL, y: CANVAS_VERTPAD + CELL } },
+// { start: { x: CANVAS_HORIZPAD, y: CANVAS_VERTPAD }, end: { x: CANVAS_HORIZPAD + CELL, y: CANVAS_VERTPAD + CELL} }
 
 const drawSnake = () => {
+  let
+    startX, startY;
+
   sceneCtx.strokeStyle = "red";
   sceneCtx.fillStyle = "yellow";
-  for (const { start: { x: startX, y: startY}, end: { x: endX, y: endY } } of snake) {
-    // console.table([["start", startX, startY], ["end", endX, endY]]);
+  // for (const { start: { x: startX, y: startY}, end: { x: endX, y: endY } } of snake) {
+  for (const { x: xCoord, y: yCoord } of snake) {
+    /*
+      x_pos: (X_COORD - 1) * CELL + CANVAS_HORIZPAD + LINE_WIDTH_FIX
+      y_pos: (Y_COORD - 1) * CELL + CANVAS_HORIZPAD + LINE_WIDTH_FIX
+    */
+    startX = (xCoord - 1) * CELL + CANVAS_HORIZPAD + LINE_WIDTH_FIX;
+    startY = (yCoord - 1) * CELL + CANVAS_VERTPAD + LINE_WIDTH_FIX;
     sceneCtx.beginPath();
-    sceneCtx.rect(startX + LINE_WIDTH_FIX, startY + LINE_WIDTH_FIX, CELL, CELL);
+    sceneCtx.rect(startX, startY, CELL, CELL);
     sceneCtx.closePath();
     sceneCtx.fill();
     sceneCtx.stroke();
@@ -74,111 +86,135 @@ const drawSnake = () => {
 };
 
 const moveSnake = () => {
-  let prevHead, nextHead;
-  prevHead = snake[0];
+  // pause
+  if (PAUSE) return;
+
+  let
+    nextHead,
+    prevHead = snake[0];
   // console.log("pHead: ", prevHead);
 
   switch (DIRECTION) {
     // left
     case LEFT:
-      if (prevHead.start.x !== GRID_LEFT_BORDER) {
+      if (prevHead.x !== GRID_LEFT_BORDER) {
         nextHead = {
-          start: { x: prevHead.start.x - CELL, y: prevHead.start.y },
-          end:   { x: prevHead.end.x - CELL,   y: prevHead.end.y   }
+          x: prevHead.x - 1,
+          y: prevHead.y
         };
       } else {
         console.log("snake head === GRID_LB");
         nextHead = {
-          start: { x: cvsWidth - CANVAS_HORIZPAD - CELL - 1, y: prevHead.start.y },
-          end:   { x: cvsWidth - CANVAS_HORIZPAD- 1,         y: prevHead.end.y   }
+          x: GRID_RIGHT_BORDER,
+          y: prevHead.y
         };
+        // nextHead = {
+        //   start: { x: cvsWidth - CANVAS_HORIZPAD - CELL - 1, y: prevHead.start.y },
+        //   end:   { x: cvsWidth - CANVAS_HORIZPAD- 1,         y: prevHead.end.y   }
+        // };
       }
       break;
 
     // right
     case RIGHT:
-      if (prevHead.end.x !== GRID_RIGHT_BORDER) {
+      if (prevHead.x !== GRID_RIGHT_BORDER) {
         nextHead = {
-          start: { x: prevHead.start.x + CELL, y: prevHead.start.y },
-          end:   { x: prevHead.end.x + CELL,   y: prevHead.end.y   }
+          x: prevHead.x + 1,
+          y: prevHead.y
         };
       } else {
         console.log("snake head === GRID_RB");
         nextHead = {
-          start: { x: CANVAS_HORIZPAD,        y: prevHead.start.y },
-          end:   { x: CANVAS_HORIZPAD + CELL, y: prevHead.end.y   }
+          x: GRID_LEFT_BORDER,
+          y: prevHead.y
         };
       }
       break;
 
     // top
     case TOP:
-      if (prevHead.start.y !== GRID_TOP_BORDER) {
+      if (prevHead.y !== GRID_TOP_BORDER) {
         nextHead = {
-          start: { x: prevHead.start.x, y: prevHead.start.y - CELL },
-          end:   { x: prevHead.end.x,   y: prevHead.end.y - CELL   }
+          x: prevHead.x,
+          y: prevHead.y - 1
         };
       } else {
         console.log("snake head === GRID_TB");
         nextHead = {
-          start: { x: prevHead.start.x, y: cvsHeight - CANVAS_VERTPAD - CELL - 1 },
-          end:   { x: prevHead.end.x,   y: cvsHeight - CANVAS_VERTPAD - 1        }
+          x: prevHead.x,
+          y: GRID_BOTTOM_BORDER
         };
       }
       break;
 
     // bottom
     case BOTTOM:
-      if (prevHead.end.y !== GRID_BOTTOM_BORDER) {
+      if (prevHead.y !== GRID_BOTTOM_BORDER) {
         nextHead = {
-          start: { x: prevHead.start.x, y: prevHead.start.y + CELL },
-          end:   { x: prevHead.end.x,   y: prevHead.end.y + CELL   }
+          x: prevHead.x,
+          y: prevHead.y + 1
         };
       } else {
         console.log("snake head === GRID_BB");
         nextHead = {
-          start: { x: prevHead.start.x, y: CANVAS_VERTPAD        },
-          end:   { x: prevHead.end.x,   y: CANVAS_VERTPAD + CELL }
+          x: prevHead.x,
+          y: GRID_TOP_BORDER
         };
       }
       break;
   }
 
-  // console.log("nHead: ", nextHead);
+
+  console.log("nHead: ", nextHead);
   snake.unshift(nextHead);
   snake.pop();
 
+  // printSnake(snake);
+
   sceneCtx.clearRect(0, 0, gridCvs.width, gridCvs.height);
+};
+
+const createFood = () => {
+  return {
+    x: getRandom(1, GRID_WIDTH),
+    y: getRandom(1, GRID_HEIGHT)
+  };
+};
+
+const getRandom = (min, max) => {
+  return Math.floor(Math.random() * (max - min + 1) + min);
 };
 
 const changeDirection = (e) => {
   // console.log(e.code);
   switch (e.code) {
     case "ArrowLeft":
-      if (DIRECTION !== LEFT && DIRECTION !== RIGHT) DIRECTION = LEFT;
+      if (!PAUSE && DIRECTION !== LEFT && DIRECTION !== RIGHT) DIRECTION = LEFT;
       break;
 
     case "ArrowRight":
-      if (DIRECTION !== RIGHT && DIRECTION !== LEFT) DIRECTION = RIGHT;
+      if (!PAUSE && DIRECTION !== RIGHT && DIRECTION !== LEFT) DIRECTION = RIGHT;
       break;
 
     case "ArrowUp":
-      if (DIRECTION !== TOP && DIRECTION !== BOTTOM) DIRECTION = TOP;
+      if (!PAUSE && DIRECTION !== TOP && DIRECTION !== BOTTOM) DIRECTION = TOP;
       break;
 
     case "ArrowDown":
-      if (DIRECTION !== BOTTOM && DIRECTION !== TOP) DIRECTION = BOTTOM;
+      if (!PAUSE && DIRECTION !== BOTTOM && DIRECTION !== TOP) DIRECTION = BOTTOM;
+      break;
+
+    case "Space":
+      PAUSE = !PAUSE;
       break;
   }
 
   console.log(`DIRECTION: ${DIRECTION}`);
 };
 
-// rewrite for compact output
 const printSnake = (snake) => {
-  console.log("##############################################");
-  for (const { start: { x: startX, y: startY}, end: { x: endX, y: endY } } of snake) {
-    console.table([["start", startX, startY], ["end", endX, endY]]);
+  for (let i = 0; i < snake.length; i++) {
+    console.log(`snake[${i}]: ${snake[i].start.x} ${snake[i].start.y}`);
   }
   console.log("##############################################");
 };
@@ -197,11 +233,8 @@ let counter = 0;
 const gameloop = async () => {
   drawSnake();
 
-  // if (++counter <= 35) {
-    await delay(250);
-    moveSnake();
-    // console.log("gameloop tick: ", counter);
-  // }
+  await delay(400);
+  moveSnake();
 
   requestAnimationFrame(gameloop);
 };
@@ -210,3 +243,4 @@ document.addEventListener("keydown", changeDirection);
 
 drawGrid();
 gameloop();
+
