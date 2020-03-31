@@ -95,11 +95,29 @@ const getRandom = (min, max) => {
 };
 // ########################################
 
-const createFood = () => {
+const getRandomCell = () => {
   return new Cell(
     getRandom(1, GRID_WIDTH),
     getRandom(1, GRID_HEIGHT)
   );
+};
+// ########################################
+
+const isSnakeSegment = (cell) => {
+  return !!Snake.find( (el) => el.x === cell.x && el.y === cell.y);
+};
+// ########################################
+
+const createFood = () => {
+  let
+    newFood = getRandomCell();
+
+  while (isSnakeSegment(newFood)) {
+    console.log("newFood isSnakeSegment: ", newFood.x, newFood.y);
+    newFood = getRandomCell();
+  }
+
+  return newFood;
 };
 // ########################################
 
@@ -114,27 +132,63 @@ const eatFood = (head) => {
 
 let
   Food = createFood();
+// ########################################
 
-Food.toString();
-// TODO: implement drawCell()
+const drawCell = (x, y, size, stroke, fill) => {
+  sceneCtx.strokeStyle = stroke;
+  sceneCtx.fillStyle = fill;
+
+  sceneCtx.beginPath();
+  sceneCtx.rect(x, y, size, size);
+  sceneCtx.closePath();
+  sceneCtx.fill();
+  sceneCtx.stroke();
+};
+// ########################################
+
+// let
+//   BLINK = false;
+// ########################################
+
 const drawFood = () => {
   let
-    startX, startY;
+    startX, startY, fill;
 
-  sceneCtx.strokeStyle = "red";
-  sceneCtx.fillStyle = "orange";
+  fill = "#27ae60";
+  // fill = BLINK ? "#27ae60" : "#ffffff";
+  // BLINK = !BLINK;
+
   /*
     x_pos: (X_COORD - 1) * CELL_SIZE + CANVAS_HORIZPAD + LINE_WIDTH_FIX
     y_pos: (Y_COORD - 1) * CELL_SIZE + CANVAS_HORIZPAD + LINE_WIDTH_FIX
   */
   startX = (Food.x - 1) * CELL_SIZE + CANVAS_HORIZPAD + LINE_WIDTH_FIX;
   startY = (Food.y - 1) * CELL_SIZE + CANVAS_VERTPAD + LINE_WIDTH_FIX;
-  sceneCtx.beginPath();
-  sceneCtx.rect(startX, startY, CELL_SIZE, CELL_SIZE);
-  sceneCtx.closePath();
-  sceneCtx.fill();
-  sceneCtx.stroke();
+  drawCell(startX, startY, CELL_SIZE, "black", fill);
 
+  // restore default: "black" stroke
+  sceneCtx.strokeStyle = "black";
+};
+// ########################################
+
+const drawSnake = () => {
+  let
+    startX, startY, segmentColor;
+
+  Snake.forEach( (segment, index) => {
+    /*
+      x_pos: (X_COORD - 1) * CELL_SIZE + CANVAS_HORIZPAD + LINE_WIDTH_FIX
+      y_pos: (Y_COORD - 1) * CELL_SIZE + CANVAS_HORIZPAD + LINE_WIDTH_FIX
+    */
+    startX = (segment.x - 1) * CELL_SIZE + CANVAS_HORIZPAD + LINE_WIDTH_FIX;
+    startY = (segment.y - 1) * CELL_SIZE + CANVAS_VERTPAD + LINE_WIDTH_FIX;
+
+    // segmentColor = (index % 2 === 0) ? "yellow" : "color_2";
+    // drawCell(startX, startY, CELL_SIZE, "red", segmentColor);
+    drawCell(startX, startY, CELL_SIZE, "red", "yellow");
+  });
+
+  // restore default: "black" stroke
   sceneCtx.strokeStyle = "black";
 };
 // ########################################
@@ -154,30 +208,6 @@ const drawGrid = () => {
   }
 
   gridCtx.stroke();
-};
-// ########################################
-
-const drawSnake = () => {
-  let
-    startX, startY;
-
-  sceneCtx.strokeStyle = "red";
-  sceneCtx.fillStyle = "yellow";
-  // for (const { start: { x: startX, y: startY}, end: { x: endX, y: endY } } of snake) {
-  for (const { x: xCoord, y: yCoord } of Snake) {
-    /*
-      x_pos: (X_COORD - 1) * CELL_SIZE + CANVAS_HORIZPAD + LINE_WIDTH_FIX
-      y_pos: (Y_COORD - 1) * CELL_SIZE + CANVAS_HORIZPAD + LINE_WIDTH_FIX
-    */
-    startX = (xCoord - 1) * CELL_SIZE + CANVAS_HORIZPAD + LINE_WIDTH_FIX;
-    startY = (yCoord - 1) * CELL_SIZE + CANVAS_VERTPAD + LINE_WIDTH_FIX;
-    sceneCtx.beginPath();
-    sceneCtx.rect(startX, startY, CELL_SIZE, CELL_SIZE);
-    sceneCtx.closePath();
-    sceneCtx.fill();
-    sceneCtx.stroke();
-  }
-  sceneCtx.strokeStyle = "black";
 };
 // ########################################
 
@@ -233,6 +263,9 @@ const moveSnake = () => {
   }
 
   // nextHead.toString();
+  if (isSnakeSegment(nextHead)) {
+    alert("game over");
+  }
 
   Snake.unshift(nextHead);
   if (eatFood(nextHead)) {
@@ -293,12 +326,13 @@ const delay = (n) => {
 let counter = 0;
 
 const gameloop = async () => {
-  drawFood();
   drawSnake();
+  drawFood();
 
   // pause
   if (!PAUSE) {
-    await delay(250);
+    await delay(100);
+    // await delay(250);
     moveSnake();
   }
 
