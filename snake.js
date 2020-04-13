@@ -1,4 +1,4 @@
-// jshint esversion: 6
+// jshint esversion: 8
 
 const
   gridCvs = document.getElementById("grid"),
@@ -13,7 +13,7 @@ const
 const
   CELL_SIZE = 19,
   CANVAS_VERTPAD  = 2, // gridCvs vertical padding
-  CANVAS_HORIZPAD = 2; // gridCvs horizontal padding
+  CANVAS_HORIZPAD = 2, // gridCvs horizontal padding
   GRID_WIDTH  = 35,
   GRID_HEIGHT = 25,
   GRID_TOP_BORDER     = 1,
@@ -28,12 +28,21 @@ const
  * 3: TOP
  * 4: BOTTOM
  */
-let
-  PAUSE  = false;
+const
   RIGHT  = 1,
   BOTTOM = 2,
   LEFT   = 3,
-  TOP    = 4,
+  TOP    = 4;
+
+const
+  FOOD_COLOR = "#27ae60",
+  SNAKE_HEAD_COLOR = "red",
+  SNAKE_SEGMENT_COLOR = "black",
+  SEGMENT_BORDER_COLOR = "black"
+
+let
+  PAUSE  = false,
+  SNAKE_LOCK_DIRECTION_CHANGE = false;
   DIRECTION  = RIGHT;
 
 // ########################################
@@ -108,7 +117,7 @@ const isSnakeSegment = (cell) => {
 };
 // ########################################
 
-const createFood = () => {
+const foodCreate = () => {
   let
     newFood = getRandomCell();
 
@@ -121,7 +130,7 @@ const createFood = () => {
 };
 // ########################################
 
-const eatFood = (head) => {
+const foodEat = (head) => {
   if (head.equals(Food)) {
     return true;
   }
@@ -131,32 +140,25 @@ const eatFood = (head) => {
 // ########################################
 
 let
-  Food = createFood();
+  Food = foodCreate();
 // ########################################
 
-const drawCell = (x, y, size, stroke, fill) => {
-  sceneCtx.strokeStyle = stroke;
+const cellDraw = (x, y, size, fill) => {
+  sceneCtx.strokeStyle = SEGMENT_BORDER_COLOR;
   sceneCtx.fillStyle = fill;
 
   sceneCtx.beginPath();
-  sceneCtx.rect(x, y, size, size);
+  // sceneCtx.rect(x, y, size, size);
+  sceneCtx.rect(x + 2, y + 2, size - 4, size - 4);
   sceneCtx.closePath();
   sceneCtx.fill();
   sceneCtx.stroke();
 };
 // ########################################
 
-// let
-//   BLINK = false;
-// ########################################
-
-const drawFood = () => {
+const foodDraw = () => {
   let
-    startX, startY, fill;
-
-  fill = "#27ae60";
-  // fill = BLINK ? "#27ae60" : "#ffffff";
-  // BLINK = !BLINK;
+    startX, startY;
 
   /*
     x_pos: (X_COORD - 1) * CELL_SIZE + CANVAS_HORIZPAD + LINE_WIDTH_FIX
@@ -164,37 +166,44 @@ const drawFood = () => {
   */
   startX = (Food.x - 1) * CELL_SIZE + CANVAS_HORIZPAD + LINE_WIDTH_FIX;
   startY = (Food.y - 1) * CELL_SIZE + CANVAS_VERTPAD + LINE_WIDTH_FIX;
-  drawCell(startX, startY, CELL_SIZE, "black", fill);
+  cellDraw(startX, startY, CELL_SIZE, FOOD_COLOR);
 
-  // restore default: "black" stroke
+  // restore default stroke: "black"
   sceneCtx.strokeStyle = "black";
 };
 // ########################################
 
-const drawSnake = () => {
+const snakeDraw = () => {
   let
-    startX, startY, segmentColor;
+    startX, startY;
 
-  Snake.forEach( (segment, index) => {
+  startX = (Snake[0].x - 1) * CELL_SIZE + CANVAS_HORIZPAD + LINE_WIDTH_FIX;
+  startY = (Snake[0].y - 1) * CELL_SIZE + CANVAS_VERTPAD + LINE_WIDTH_FIX;
+  cellDraw(startX, startY, CELL_SIZE, SNAKE_HEAD_COLOR);
+  for (let index = 1; index < Snake.length; index++) {
     /*
       x_pos: (X_COORD - 1) * CELL_SIZE + CANVAS_HORIZPAD + LINE_WIDTH_FIX
       y_pos: (Y_COORD - 1) * CELL_SIZE + CANVAS_HORIZPAD + LINE_WIDTH_FIX
     */
-    startX = (segment.x - 1) * CELL_SIZE + CANVAS_HORIZPAD + LINE_WIDTH_FIX;
-    startY = (segment.y - 1) * CELL_SIZE + CANVAS_VERTPAD + LINE_WIDTH_FIX;
+    startX = (Snake[index].x - 1) * CELL_SIZE + CANVAS_HORIZPAD + LINE_WIDTH_FIX;
+    startY = (Snake[index].y - 1) * CELL_SIZE + CANVAS_VERTPAD + LINE_WIDTH_FIX;
 
-    // segmentColor = (index % 2 === 0) ? "yellow" : "color_2";
-    // drawCell(startX, startY, CELL_SIZE, "red", segmentColor);
-    drawCell(startX, startY, CELL_SIZE, "red", "yellow");
-  });
+    cellDraw(startX, startY, CELL_SIZE, SNAKE_SEGMENT_COLOR);
+  }
 
-  // restore default: "black" stroke
+  // Snake.forEach( (segment, index) => {
+  //   startX = (segment.x - 1) * CELL_SIZE + CANVAS_HORIZPAD + LINE_WIDTH_FIX;
+  //   startY = (segment.y - 1) * CELL_SIZE + CANVAS_VERTPAD + LINE_WIDTH_FIX;
+  //   cellDraw(startX, startY, CELL_SIZE, SNAKE_SEGMENT_COLOR);
+  // });
+
+  // restore default stroke: "black"
   sceneCtx.strokeStyle = "black";
 };
 // ########################################
 
 // grid size __35x25__
-const drawGrid = () => {
+const gridDraw = () => {
   // vertical lines, 35boxes
   for (let w = CANVAS_HORIZPAD; w <= gridCvs.width; w += 19) {
     gridCtx.moveTo(w + LINE_WIDTH_FIX, CANVAS_VERTPAD);
@@ -211,13 +220,14 @@ const drawGrid = () => {
 };
 // ########################################
 
-const moveSnake = () => {
+const snakeHeading = () => {
   let
     prevHead = new Cell(),
     nextHead = new Cell();
 
   prevHead.copy(Snake[0]);
   nextHead.copy(prevHead);
+  // nextHead.copy(Snake[0]);
   // prevHead.toString();
 
   switch (DIRECTION) {
@@ -226,7 +236,7 @@ const moveSnake = () => {
       if (prevHead.x !== GRID_LEFT_BORDER) {
         nextHead.x = prevHead.x - 1;
       } else {
-        console.log("snake head === GRID_LB");
+        // console.log("snake head === GRID_LB");
         nextHead.x = GRID_RIGHT_BORDER;
       }
       break;
@@ -236,7 +246,7 @@ const moveSnake = () => {
       if (prevHead.x !== GRID_RIGHT_BORDER) {
         nextHead.x = prevHead.x + 1;
       } else {
-        console.log("snake head === GRID_RB");
+        // console.log("snake head === GRID_RB");
         nextHead.x = GRID_LEFT_BORDER;
       }
       break;
@@ -246,7 +256,7 @@ const moveSnake = () => {
       if (prevHead.y !== GRID_TOP_BORDER) {
         nextHead.y = prevHead.y - 1;
       } else {
-        console.log("snake head === GRID_TB");
+        // console.log("snake head === GRID_TB");
         nextHead.y = GRID_BOTTOM_BORDER;
       }
       break;
@@ -256,7 +266,7 @@ const moveSnake = () => {
       if (prevHead.y !== GRID_BOTTOM_BORDER) {
         nextHead.y = prevHead.y + 1;
       } else {
-        console.log("snake head === GRID_BB");
+        // console.log("snake head === GRID_BB");
         nextHead.y = GRID_TOP_BORDER;
       }
       break;
@@ -264,83 +274,145 @@ const moveSnake = () => {
 
   // nextHead.toString();
   if (isSnakeSegment(nextHead)) {
-    alert("game over");
+    // alert("game over");
+    restart();
+
+    return;
   }
 
   Snake.unshift(nextHead);
-  if (eatFood(nextHead)) {
-    Food = createFood();
+  if (foodEat(nextHead)) {
+    Food = foodCreate();
   } else {
     Snake.pop();
   }
 
-  // printSnake(Snake);
+  // snakePrint(Snake);
+};
+// ########################################
 
+const sceneClear = () => {
   sceneCtx.clearRect(0, 0, gridCvs.width, gridCvs.height);
 };
 // ########################################
 
-const changeDirection = (e) => {
-  // console.log(e.code);
-  switch (e.code) {
-    case "ArrowLeft":
-      if (!PAUSE && DIRECTION !== LEFT && DIRECTION !== RIGHT) DIRECTION = LEFT;
-      break;
-
-    case "ArrowRight":
-      if (!PAUSE && DIRECTION !== RIGHT && DIRECTION !== LEFT) DIRECTION = RIGHT;
-      break;
-
-    case "ArrowUp":
-      if (!PAUSE && DIRECTION !== TOP && DIRECTION !== BOTTOM) DIRECTION = TOP;
-      break;
-
-    case "ArrowDown":
-      if (!PAUSE && DIRECTION !== BOTTOM && DIRECTION !== TOP) DIRECTION = BOTTOM;
-      break;
-
-    case "Space":
-      PAUSE = !PAUSE;
-      break;
-  }
-
-  console.log(`DIRECTION: ${DIRECTION}`);
+// draw scene objects
+const sceneDraw = () => {
+  snakeDraw();
+  foodDraw();
 };
+// ########################################
 
-const printSnake = (snake) => {
+const sceneRedraw = () => {
+  sceneClear();
+  sceneDraw();
+};
+// ########################################
+
+const directionChange = (e) => {
+  // console.log(e.code);
+
+  if (e.code === "Space") PAUSE = !PAUSE;
+  // console.log("pause:", PAUSE ? "on" : "off");
+
+  if (!PAUSE && !SNAKE_LOCK_DIRECTION_CHANGE) {
+    let newDirection;
+    switch (e.code) {
+      case "ArrowLeft":
+        newDirection = LEFT;
+        break;
+
+      case "ArrowRight":
+        newDirection = RIGHT;
+        break;
+
+      case "ArrowUp":
+        newDirection = TOP;
+        break;
+
+      case "ArrowDown":
+        newDirection = BOTTOM;
+        break;
+    } // endswitch
+
+    if (newDirection && newDirection !== DIRECTION && Math.abs(newDirection - DIRECTION) !== 2) {
+      DIRECTION = newDirection;
+      SNAKE_LOCK_DIRECTION_CHANGE = true;
+    }
+  } // endif
+
+  // console.log(`DIRECTION: ${DIRECTION}`);
+};
+// ########################################
+
+const snakePrint = (snake) => {
   for (let i = 0; i < snake.length; i++) {
     console.log(`snake[${i}]: ${snake[i].x} ${snake[i].y}`);
   }
   console.log("##############################################");
 };
+// ########################################
 
 const delay = (n) => {
-  n = n || 2000;
+  // 1000ms = 1s
+  n = n || 1000;
   return new Promise(done => {
     setTimeout(() => {
       done();
     }, n);
   });
 };
-
-let counter = 0;
+// ########################################
 
 const gameloop = async () => {
-  drawSnake();
-  drawFood();
+  // await delay(100);
+  // await delay(125);
+  // await delay(150);
+  await delay(175);
+  // await delay(200);
+  // await delay(225);
+  // await delay(250);
+  // await delay(500);
+  // await delay(750);
+  // await delay(1000);
 
-  // pause
   if (!PAUSE) {
-    await delay(100);
-    // await delay(250);
-    moveSnake();
+    if (SNAKE_LOCK_DIRECTION_CHANGE) {
+      // console.log("in gameloop:", performance.now());
+      SNAKE_LOCK_DIRECTION_CHANGE = !SNAKE_LOCK_DIRECTION_CHANGE;
+    }
+
+    snakeHeading();
+    sceneRedraw();
   }
 
   requestAnimationFrame(gameloop);
 };
+// ########################################
 
-document.addEventListener("keydown", changeDirection);
+const init = () => {
+  document.addEventListener("keydown", directionChange);
 
-drawGrid();
-gameloop();
+  gridDraw();
+  sceneDraw();
+
+  gameloop();
+};
+// ########################################
+
+const restart = () => {
+  Snake = [
+    new Cell(3, 1),
+    new Cell(2, 1),
+    new Cell(1, 1)
+  ];
+
+  DIRECTION = RIGHT;
+  PAUSE = true;
+};
+// ########################################
+
+
+// everything start here
+init();
 
